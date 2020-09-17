@@ -28,10 +28,10 @@
 
 
 
-
-int16_t audio_0[AUDIO_BUFFER_SIZE];
-int16_t audio_1[AUDIO_BUFFER_SIZE];
-bool audio_playing_0 = true;
+#define AUDIO_NUM_BUFFS 4
+int16_t audio[AUDIO_NUM_BUFFS][AUDIO_DMA_SIZE];
+volatile int audio_read_buff=0;
+volatile int audio_write_buff=0;
 
 float curr_note_freq=1000;
 uint8_t curr_midi_note=50;
@@ -68,16 +68,19 @@ void dma1_stream5_isr(void)
 	}
 
 
-	//int offs = 2*audio_next_phase();
+	int next_buff_idx = audio_read_buff+1;
+	next_buff_idx = next_buff_idx % AUDIO_NUM_BUFFS;
+	if( next_buff_idx == audio_write_buff )
+		; // ERROR, underflow 
+
+	audio_read_buff = next_buff_idx;
 	if( dma_get_target(DMA1, DMA_STREAM5) == 0 )
 	{
-		audio_playing_0=true;
-	//	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) (audio_0 + offs)); //2* because its stereo
+		dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[next_buff_idx]); //2* because its stereo
 	}
 	else
 	{
-		audio_playing_0=false;
-	//	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) (audio_0 + offs));
+		dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) audio[next_buff_idx]);
 	}
 	note_increments++;
 }
@@ -246,9 +249,11 @@ int main(void)
 
 	systick_setup();
 
-	audio_fill_buffer(audio_0, 0, ADSR_CONTINUE);
-	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) audio_0);
-	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio_1);
+	audio_fill_buffer(audio[0], 0, ADSR_CONTINUE);
+	audio_fill_buffer(audio[1], 0, ADSR_CONTINUE);
+	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) audio[0]);
+	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[1]);
+	audio_write_buff+=2;
 
 	dma_enable_stream(DMA1, DMA_STREAM5);
 
@@ -298,8 +303,10 @@ int main(void)
 				adsr = ADSR_END;
 		}
 
-		int16_t *fillbuff = audio_playing_0 ? audio_1 : audio_0;
-		audio_fill_buffer(fillbuff, nfreq, adsr);
+		//int16_t *fillbuff = audio_playing_0 ? audio_1 : audio_0;
+		audio_fill_buffer(audio[audio_write_buff], nfreq, adsr);
+		audio_write_buff++;
+		audio_write_buff %= AUDIO_NUM_BUFFS;
 		
 		// add new note to end of seed
 		nnote = melody_next_sym(seed, 0.8);
