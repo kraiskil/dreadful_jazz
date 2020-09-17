@@ -2,9 +2,11 @@
 #include "midi.h"
 
 #if SEED_LEN == 8
-uint8_t seed[SEED_LEN] = { 69, MIDI_CONT, 69, MIDI_CONT, 69, MIDI_CONT, 69, MIDI_CONT };
+uint8_t seed[SEED_LEN] = { 69, MIDI_CONT, MIDI_CONT, MIDI_CONT, 69, MIDI_CONT, 69, MIDI_CONT };
 #elif SEED_LEN == 4
 uint8_t seed[SEED_LEN] = { 69, MIDI_CONT, MIDI_CONT, MIDI_CONT };
+#elif SEED_LEN == 16
+uint8_t seed[SEED_LEN] = { 69, MIDI_CONT, MIDI_CONT, MIDI_CONT, 69, MIDI_CONT, MIDI_CONT, MIDI_CONT, 66,66,66,66,60, MIDI_CONT, 60, MIDI_CONT};
 #else
 #error
 #endif

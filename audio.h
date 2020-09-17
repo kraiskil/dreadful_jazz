@@ -31,6 +31,5 @@ enum adsr {
 	ADSR_END,           // end of a note
 };
 
-int audio_fill_buffer(int16_t *buffer, float freq, enum adsr);
-int audio_next_phase(void);
+void audio_fill_buffer(int16_t *buffer, float freq, enum adsr);
 

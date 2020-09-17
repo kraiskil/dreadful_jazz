@@ -265,37 +265,52 @@ int main(void)
 	
 
 	float nfreq=0;
+	uint32_t now = note_increments;
 	while(1) {
-		uint32_t now = note_increments;
+		// wait for DMA transfer to I2S to finish
+		while( note_increments <= now );
+		/* Blink the heartbeat LED at at 2xbpm*/
+		gpio_toggle(GPIOD, GPIO13);
+		now = note_increments;
+
+		enum adsr adsr;
 
 		// play first seed
 		uint8_t nnote = seed[0];
-		if( nnote == MIDI_REST)
+		if( nnote == MIDI_REST) {
 			nfreq = 0;
-		else if( nnote == MIDI_END ){
-			gpio_set(GPIOD, GPIO12);
+			adsr = ADSR_BEGIN_AND_END;
+		}
+		else if( nnote == MIDI_END ) {
+			gpio_set(GPIOD, GPIO14); // red led
+			adsr = ADSR_BEGIN_AND_END;
 			nfreq = 0;
 		}
-		else if ( nnote != MIDI_CONT )
+		else if ( nnote != MIDI_CONT ) {
 			nfreq = midinote_to_freq(nnote);
-		// else MIDI_CONT - don't update frequency to play
+			adsr = ADSR_BEGIN;
+		}
+		else { // This is a midi continue note
+			if( seed[1] == MIDI_CONT )
+				adsr = ADSR_CONTINUE;
+			else
+				adsr = ADSR_END;
+		}
 
 		int16_t *fillbuff = audio_playing_0 ? audio_1 : audio_0;
-		audio_fill_buffer(fillbuff, nfreq, ADSR_BEGIN_AND_END);
+		audio_fill_buffer(fillbuff, nfreq, adsr);
 		
 		// add new note to end of seed
-		gpio_set(GPIOD, GPIO14);
-		nnote = melody_next_sym(seed, 0.8);
-		gpio_clear(GPIOD, GPIO14);
+		gpio_set(GPIOD, GPIO12);
+		//nnote = melody_next_sym(seed, 0.8);
+		nnote = MIDI_END;
+		gpio_clear(GPIOD, GPIO12);
 		for( int i=1; i<SEED_LEN; i++)
 			seed[i-1] = seed[i];
 		
 		seed[SEED_LEN-1]=nnote;
 
 
-		while( now >= note_increments );
-		/* Blink the heartbeat LED at at 2xbpm*/
-		gpio_toggle(GPIOD, GPIO13);
 	}
 	return 0;
 }
