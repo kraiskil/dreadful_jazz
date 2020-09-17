@@ -75,6 +75,7 @@ void audio_fill_buffer(int16_t *audio, float freq, enum adsr adsr)
 		if( phase >= 1.0 )
 			phase-=1.0;
 		float amp = sinf(phase*2*M_PI);
+		amp += sinf(2.1*phase*2*M_PI);
 		amp *= adsr_modifier(i, adsr);
 		audio[2*i+0] = D16(amp);
 		audio[2*i+1] = D16(amp);
