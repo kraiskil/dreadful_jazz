@@ -269,6 +269,7 @@ int main(void)
 	while(1) {
 		// wait for DMA transfer to I2S to finish
 		while( note_increments <= now );
+		gpio_set(GPIOD, GPIO12);
 		/* Blink the heartbeat LED at at 2xbpm*/
 		gpio_toggle(GPIOD, GPIO13);
 		now = note_increments;
@@ -301,16 +302,12 @@ int main(void)
 		audio_fill_buffer(fillbuff, nfreq, adsr);
 		
 		// add new note to end of seed
-		gpio_set(GPIOD, GPIO12);
-		//nnote = melody_next_sym(seed, 0.8);
-		nnote = MIDI_END;
-		gpio_clear(GPIOD, GPIO12);
+		nnote = melody_next_sym(seed, 0.8);
 		for( int i=1; i<SEED_LEN; i++)
 			seed[i-1] = seed[i];
 		
 		seed[SEED_LEN-1]=nnote;
-
-
+		gpio_clear(GPIOD, GPIO12);
 	}
 	return 0;
 }
