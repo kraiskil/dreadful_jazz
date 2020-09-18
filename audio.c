@@ -5,7 +5,7 @@
 #include "audio.h"
 
 
-#define VOL 0x0100
+#define VOL 0x0080
 #define D16(x) ((int16_t)(x*VOL) )
 
 // save phase across calls so the audio signal 

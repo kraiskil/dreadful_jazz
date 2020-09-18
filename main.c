@@ -28,10 +28,10 @@
 
 
 
-#define AUDIO_NUM_BUFFS 4
+#define AUDIO_NUM_BUFFS  BATCH_SIZE
 int16_t audio[AUDIO_NUM_BUFFS][AUDIO_DMA_SIZE];
 volatile int audio_read_buff=0;
-volatile int audio_write_buff=0;
+volatile bool audio_last_buffer_playing;
 
 float curr_note_freq=1000;
 uint8_t curr_midi_note=50;
@@ -61,6 +61,7 @@ static void write_i2c_to_audiochip( uint8_t reg, uint8_t contents)
  */
 void dma1_stream5_isr(void)
 {
+	gpio_toggle(GPIOD, GPIO15);
 
 	/* Clear the 'transfer complete' interrupt, or execution would jump right back to this ISR. */
 	if (dma_get_interrupt_flag(DMA1, DMA_STREAM5, DMA_TCIF)) {
@@ -68,19 +69,29 @@ void dma1_stream5_isr(void)
 	}
 
 
-	int next_buff_idx = audio_read_buff+1;
-	next_buff_idx = next_buff_idx % AUDIO_NUM_BUFFS;
-	if( next_buff_idx == audio_write_buff )
-		; // ERROR, underflow 
+	audio_read_buff++;
+	//audio_read_buff = audio_read_buff % AUDIO_NUM_BUFFS;
+	if( audio_read_buff >= AUDIO_NUM_BUFFS )
+		audio_read_buff = 0;
 
-	audio_read_buff = next_buff_idx;
+	// Set flag to tell if last prefilled audio[] buffer is currently
+	// being sent to I2S by the DMA.
+	// Since we here set the *next* buffer to be played, what is now
+	// played is current-1 modulo num_buffers.
+	// I.e when the next-to-be-played is buffer 0, we are at the end
+	// TODO: does OpenCM have semaphores?
+	if( audio_read_buff == 0 )
+		audio_last_buffer_playing = true;
+	else
+		audio_last_buffer_playing = false;
+
 	if( dma_get_target(DMA1, DMA_STREAM5) == 0 )
 	{
-		dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[next_buff_idx]); //2* because its stereo
+		dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[audio_read_buff]); //2* because its stereo
 	}
 	else
 	{
-		dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) audio[next_buff_idx]);
+		dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) audio[audio_read_buff]);
 	}
 	note_increments++;
 }
@@ -123,6 +134,34 @@ static void systick_setup(void)
 
 
 
+void fill_buffer_i( int i, uint8_t *seed )
+{
+	uint8_t nnote = seed[i];
+	float nfreq=0;
+	enum adsr adsr;
+	if( nnote == MIDI_REST) {
+		nfreq = 0;
+		adsr = ADSR_BEGIN_AND_END;
+	}
+	else if( nnote == MIDI_END ) {
+		gpio_set(GPIOD, GPIO14); // red led
+		adsr = ADSR_BEGIN_AND_END;
+		nfreq = 0;
+	}
+	else if ( nnote != MIDI_CONT ) {
+		nfreq = midinote_to_freq(nnote);
+		adsr = ADSR_BEGIN;
+	}
+	else { // This is a midi continue note
+		if( seed[i+1] == MIDI_CONT )
+			adsr = ADSR_CONTINUE;
+		else
+			adsr = ADSR_END;
+	}
+
+	//int16_t *fillbuff = audio_playing_0 ? audio_1 : audio_0;
+	audio_fill_buffer(audio[i], nfreq, adsr);
+}
 
 int main(void)
 {
@@ -139,6 +178,8 @@ int main(void)
 	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12); /* green led */
 	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13); /* orange led */
 	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO14); /* red led */
+	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO15); /* ? led */
+	gpio_set(GPIOD, GPIO15); // ? led - error
 
 
 	/* I2C GPIO pins
@@ -249,13 +290,12 @@ int main(void)
 
 	systick_setup();
 
-	audio_fill_buffer(audio[0], 0, ADSR_CONTINUE);
-	audio_fill_buffer(audio[1], 0, ADSR_CONTINUE);
-	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) audio[0]);
-	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[1]);
-	audio_write_buff+=2;
+	for( int i=0; i< AUDIO_NUM_BUFFS; i++)
+		audio_fill_buffer(audio[i], 500+i*100, ADSR_CONTINUE);
+	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) &audio[0]);
+	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) &audio[1]);
+	audio_read_buff = 0;
 
-	dma_enable_stream(DMA1, DMA_STREAM5);
 
 
 	/* ADC setup as in the libopencm3-examples */
@@ -267,54 +307,38 @@ int main(void)
 	adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_3CYC);
 	adc_power_on(ADC1);
 
-	
 
-	float nfreq=0;
-	uint32_t now = note_increments;
+	// audio buffers are now full of zeros
+	dma_enable_stream(DMA1, DMA_STREAM5);
+
 	while(1) {
-		// wait for DMA transfer to I2S to finish
-		while( note_increments <= now );
+
+		// calculate the new notes. This will take a long time
+		uint8_t new_notes[BATCH_SIZE];
 		gpio_set(GPIOD, GPIO12);
-		/* Blink the heartbeat LED at at 2xbpm*/
-		gpio_toggle(GPIOD, GPIO13);
-		now = note_increments;
+		melody_next_sym(seed, 0.8, new_notes);
+		gpio_toggle(GPIOD, GPIO12);
 
-		enum adsr adsr;
+		gpio_set(GPIOD, GPIO13);
+		// wait till we are reading last filled buffer
+		while( audio_last_buffer_playing == false ); 
+		gpio_clear(GPIOD, GPIO13);
 
-		// play first seed
-		uint8_t nnote = seed[0];
-		if( nnote == MIDI_REST) {
-			nfreq = 0;
-			adsr = ADSR_BEGIN_AND_END;
-		}
-		else if( nnote == MIDI_END ) {
-			gpio_set(GPIOD, GPIO14); // red led
-			adsr = ADSR_BEGIN_AND_END;
-			nfreq = 0;
-		}
-		else if ( nnote != MIDI_CONT ) {
-			nfreq = midinote_to_freq(nnote);
-			adsr = ADSR_BEGIN;
-		}
-		else { // This is a midi continue note
-			if( seed[1] == MIDI_CONT )
-				adsr = ADSR_CONTINUE;
-			else
-				adsr = ADSR_END;
+		// can now write all but the last buffer, which is being read
+		for( int i=0; i<BATCH_SIZE-1; i++ )
+		{
+			fill_buffer_i(i, seed);
 		}
 
-		//int16_t *fillbuff = audio_playing_0 ? audio_1 : audio_0;
-		audio_fill_buffer(audio[audio_write_buff], nfreq, adsr);
-		audio_write_buff++;
-		audio_write_buff %= AUDIO_NUM_BUFFS;
-		
-		// add new note to end of seed
-		nnote = melody_next_sym(seed, 0.8);
-		for( int i=1; i<SEED_LEN; i++)
-			seed[i-1] = seed[i];
-		
-		seed[SEED_LEN-1]=nnote;
-		gpio_clear(GPIOD, GPIO12);
+		// wait till last of the old buffers sent to I2S
+		while( audio_last_buffer_playing == true);
+		fill_buffer_i(BATCH_SIZE-1, seed);
+
+		for( int i=BATCH_SIZE; i<SEED_LEN; i++)
+			seed[i-BATCH_SIZE] = seed[i];
+		for( int i=0; i<BATCH_SIZE; i++ )
+			seed[SEED_LEN-BATCH_SIZE+i] = new_notes[i];
+
 	}
 	return 0;
 }

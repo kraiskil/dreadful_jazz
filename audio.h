@@ -8,20 +8,6 @@
 #define AUDIO_DMA_SIZE (2*(Fs/4))
 
 
-/* Margin to add to the DMA buffer so that
- * for any generated frequency, all possible
- * phase values are available and selectable
- * with an offset from the audio buffer start,
- * so that there always is AUDIO_DMA_SIZE samples
- * available after the offset.
- * AUDIO_BUFFER_MARGIN is calculated with
- * floor( Fs/min(f) )
- * Fs=8k, lowest audio frequency: 100Hz -> 80
- */
-#define AUDIO_BUFFER_MARGIN (2*80)
-
-#define AUDIO_BUFFER_SIZE (AUDIO_BUFFER_MARGIN + AUDIO_DMA_SIZE)
-
 /* Attack, decay, sustain and release - profiles for the audio
  * generation */
 enum adsr {
