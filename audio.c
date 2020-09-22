@@ -12,7 +12,6 @@
 // is smooth between DMA buffer swaps
 static float carry_over_phase=0;
 static float phase_step;
-static float cur_freq;
 
 static inline float adsr_modifier( int i, enum adsr adsr)
 {
@@ -21,8 +20,8 @@ static inline float adsr_modifier( int i, enum adsr adsr)
 	int decay_len = 512 - attack_len;
 	int sustain_len = 512;
 	int release_len = 1024;
-	float attack_level = 1.2f;
-	float sustain_level = 1.0f;
+	float attack_level = 2.0f;
+	float sustain_level = 0.5f;
 	float amp;
 
 	int samples = AUDIO_DMA_SIZE/2;
@@ -61,7 +60,6 @@ static inline float adsr_modifier( int i, enum adsr adsr)
 
 void audio_fill_buffer(int16_t *audio, float freq, enum adsr adsr)
 {
-	cur_freq = freq;
 	phase_step = freq/Fs;
 	float phase;
 	if( adsr == ADSR_BEGIN || adsr == ADSR_BEGIN_AND_END )

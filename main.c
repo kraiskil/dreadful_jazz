@@ -67,6 +67,8 @@ void dma1_stream5_isr(void)
 	if (dma_get_interrupt_flag(DMA1, DMA_STREAM5, DMA_TCIF)) {
 		dma_clear_interrupt_flags(DMA1, DMA_STREAM5, DMA_TCIF);
 	}
+	else
+		return;
 
 
 	audio_read_buff++;
@@ -87,7 +89,7 @@ void dma1_stream5_isr(void)
 
 	if( dma_get_target(DMA1, DMA_STREAM5) == 0 )
 	{
-		dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[audio_read_buff]); //2* because its stereo
+		dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[audio_read_buff]);
 	}
 	else
 	{
@@ -137,7 +139,7 @@ static void systick_setup(void)
 void fill_buffer_i( int i, uint8_t *seed )
 {
 	uint8_t nnote = seed[i];
-	float nfreq=0;
+	static float nfreq=0;
 	enum adsr adsr;
 	if( nnote == MIDI_REST) {
 		nfreq = 0;
@@ -158,7 +160,6 @@ void fill_buffer_i( int i, uint8_t *seed )
 			adsr = ADSR_END;
 	}
 
-	//int16_t *fillbuff = audio_playing_0 ? audio_1 : audio_0;
 	audio_fill_buffer(audio[i], nfreq, adsr);
 }
 
@@ -290,7 +291,8 @@ int main(void)
 	systick_setup();
 
 	for( int i=0; i< AUDIO_NUM_BUFFS; i++)
-		audio_fill_buffer(audio[i], 0, ADSR_CONTINUE);
+		audio_fill_buffer(audio[i], 0, ADSR_BEGIN);
+	
 	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) &audio[0]);
 	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) &audio[1]);
 	audio_read_buff = 0;
@@ -309,11 +311,9 @@ int main(void)
 
 	// audio buffers are now full of zeros
 	dma_enable_stream(DMA1, DMA_STREAM5);
-
 	while(1) {
-
 		// calculate the new notes. This will take a long time
-		uint8_t new_notes[BATCH_SIZE];
+		uint8_t new_notes[BATCH_SIZE] =  {MIDI_END, MIDI_END, MIDI_END, MIDI_END};
 		gpio_set(GPIOD, GPIO12);
 		melody_next_sym(seed, 0.8, new_notes);
 		gpio_toggle(GPIOD, GPIO12);
@@ -330,7 +330,7 @@ int main(void)
 		}
 
 		// wait till last of the old buffers sent to I2S
-		while( audio_last_buffer_playing == true);
+		while( audio_last_buffer_playing == true );
 		fill_buffer_i(BATCH_SIZE-1, seed);
 
 		for( int i=BATCH_SIZE; i<SEED_LEN; i++)

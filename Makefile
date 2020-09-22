@@ -2,8 +2,8 @@ XCXX=arm-none-eabi-gcc
 XCXXFLAGS=--specs=nosys.specs -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 XCXXFLAGS+=-I${OPENCM3_DIR}/include -DSTM32F4
 CXXFLAGS=-DNDEBUG -Wall -Werror
-#CXXFLAGS+=-O4
-CXXFLAGS+=-O1 -g
+CXXFLAGS+=-O4
+#CXXFLAGS+=-O0 -g
 CXXFLAGS+=-DHIDDEN_SIZE=164
 
 XLDFLAGS=-L${OPENCM3_DIR}/lib -lopencm3_stm32f4 -Tstm32f411.ld -nostartfiles -Wl,--print-memory-usage -lm
@@ -15,7 +15,7 @@ all: melodygen
 generated.c: model.onnx
 	onnx2c -v $< > $@
 
-melodygen: main.c audio.c midi.c melody.c generated.c vocab.c
+melodygen: main.c audio.c midi.c vocab.c melody.c generated.c
 	${XCXX} ${CXXFLAGS} ${XCXXFLAGS} $^ -o $@ ${XLDFLAGS}
 
 flash: melodygen 
