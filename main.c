@@ -144,7 +144,6 @@ void fill_buffer_i( int i, uint8_t *seed )
 		adsr = ADSR_BEGIN_AND_END;
 	}
 	else if( nnote == MIDI_END ) {
-		gpio_set(GPIOD, GPIO14); // red led
 		adsr = ADSR_BEGIN_AND_END;
 		nfreq = 0;
 	}
@@ -291,7 +290,7 @@ int main(void)
 	systick_setup();
 
 	for( int i=0; i< AUDIO_NUM_BUFFS; i++)
-		audio_fill_buffer(audio[i], 500+i*100, ADSR_CONTINUE);
+		audio_fill_buffer(audio[i], 0, ADSR_CONTINUE);
 	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) &audio[0]);
 	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) &audio[1]);
 	audio_read_buff = 0;
@@ -325,7 +324,7 @@ int main(void)
 		gpio_clear(GPIOD, GPIO13);
 
 		// can now write all but the last buffer, which is being read
-		for( int i=0; i<BATCH_SIZE-1; i++ )
+		for( int i=0; i<(BATCH_SIZE-1); i++ )
 		{
 			fill_buffer_i(i, seed);
 		}
@@ -336,8 +335,11 @@ int main(void)
 
 		for( int i=BATCH_SIZE; i<SEED_LEN; i++)
 			seed[i-BATCH_SIZE] = seed[i];
-		for( int i=0; i<BATCH_SIZE; i++ )
+		for( int i=0; i<BATCH_SIZE; i++ ) {
 			seed[SEED_LEN-BATCH_SIZE+i] = new_notes[i];
+			if( new_notes[i] == MIDI_END )
+				gpio_set(GPIOD, GPIO14); // red led
+		}
 
 	}
 	return 0;

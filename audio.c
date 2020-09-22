@@ -21,8 +21,8 @@ static inline float adsr_modifier( int i, enum adsr adsr)
 	int decay_len = 512 - attack_len;
 	int sustain_len = 512;
 	int release_len = 1024;
-	float attack_level = 2.0f;
-	float sustain_level = 0.6f;
+	float attack_level = 1.2f;
+	float sustain_level = 1.0f;
 	float amp;
 
 	int samples = AUDIO_DMA_SIZE/2;

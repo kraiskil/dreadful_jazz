@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <libopencm3/stm32/adc.h>
+#include "midi.h"
 
 /* verbatim from libopencm3-examples. GPL */
 static uint16_t read_adc_naiive(uint8_t channel)
@@ -18,11 +19,7 @@ static uint16_t read_adc_naiive(uint8_t channel)
 // 0 : rest
 // 1 : end
 // 2 : continuation (i.e. _)
-uint8_t vocab[47] = {
-64, 49, 81, 78, 45, 66, 70, 43, 88, 47, 65, 63, 61,
-82, 72, 51, 84, 85, 60, 76, 71, 58, 79, 74, 57, 54,
-75, 59,  0, 86, 73, 93, 52,  1, 56, 55, 77,  2, 48,
-68, 80, 62, 50, 83, 53, 67, 69};
+#include "vocab.h"
 
 float midinote_to_freq(uint8_t x)
 {
@@ -30,29 +27,35 @@ float midinote_to_freq(uint8_t x)
 	return a * powf(2, (float)(x-69)/12);
 }
 
-uint8_t onehot_to_midi(float rv[1][47], float temperature)
+uint8_t onehot_to_midi(float rv[1][VOCAB_SIZE], float temperature)
 {
 	float max=rv[0][0];
 	uint8_t maxi=0;
 	uint8_t maxi2=0;
 	// TODO: proper temperature sampling
 
-	for(int i=1; i<47; i++) {
+	for(int i=1; i<VOCAB_SIZE; i++) {
 		if( rv[0][i] > max ) {
 			max = rv[0][i];
 			maxi2=maxi;
 			maxi = i;
 		}
 	}
-	if( (read_adc_naiive(0) & 0x7)  == 0 )
-		return vocab[maxi2];
+
+	if( (read_adc_naiive(0) & 0x7)  == 0 ){
+		// its a bit eager in selecting END
+		//if( vocab[maxi2] == MIDI_END )
+		//	return vocab[maxi];
+		//else
+			return vocab[maxi2];
+	}
 	else
 		return vocab[maxi];
 }
 
-void midi_to_onehot(uint8_t midi, float rv[1][47])
+void midi_to_onehot(uint8_t midi, float rv[1][VOCAB_SIZE])
 {
-	for( int i=0; i<47; i++ )
+	for( int i=0; i<VOCAB_SIZE; i++ )
 		if( vocab[i] == midi )
 			rv[0][i]=1;
 		else

@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "vocab.h"
 
 #define MIDI_REST 0
 #define MIDI_END 1
