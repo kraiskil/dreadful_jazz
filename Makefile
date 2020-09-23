@@ -2,8 +2,8 @@ XCXX=arm-none-eabi-gcc
 XCXXFLAGS=--specs=nosys.specs -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 XCXXFLAGS+=-I${OPENCM3_DIR}/include -DSTM32F4
 CXXFLAGS=-DNDEBUG -Wall -Werror
-CXXFLAGS+=-O4
-#CXXFLAGS+=-O0 -g
+CXXFLAGS+=-Os
+#CXXFLAGS+=-O1 -g
 CXXFLAGS+=-DHIDDEN_SIZE=164
 
 XLDFLAGS=-L${OPENCM3_DIR}/lib -lopencm3_stm32f4 -Tstm32f411.ld -nostartfiles -Wl,--print-memory-usage -lm

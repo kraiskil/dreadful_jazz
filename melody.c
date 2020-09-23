@@ -1,6 +1,7 @@
 #include "melody.h"
 #include "midi.h"
 #include <string.h>
+#include <stdbool.h>
 
 #if SEED_LEN == 8
 uint8_t seed[SEED_LEN] = {60, 61, 62, 63, 64, 65, 66, MIDI_CONT };
@@ -18,6 +19,14 @@ MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END,
 uint8_t seed[SEED_LEN] = { 
 MIDI_END, MIDI_END,MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
 69, MIDI_CONT, MIDI_CONT, MIDI_CONT, 69, MIDI_CONT, MIDI_CONT, MIDI_CONT, 66,66,66,66,60, MIDI_CONT, 60, MIDI_CONT};
+#elif SEED_LEN == 40
+uint8_t seed[SEED_LEN] = { 
+MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
+MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
+MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
+MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
+60, 60, 60, 60, 62, MIDI_CONT, MIDI_CONT, MIDI_CONT
+};
 #else
 #error
 #endif
@@ -33,7 +42,11 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 
 
 	// One end sequence -> generate only end sequences
-	if( seed[SEED_LEN-1] == MIDI_END ) {
+	bool is_end=false;
+	for( int i=SEED_LEN-BATCH_SIZE; i<SEED_LEN; i++)
+		if(seed[i] == MIDI_END )
+			is_end=true;
+	if( is_end ) {
 		for(int i=0; i<BATCH_SIZE; i++)
 			generated[i] = MIDI_END;
 		return;
