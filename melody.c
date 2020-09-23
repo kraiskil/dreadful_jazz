@@ -31,8 +31,6 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 	float tensor_input[1][1][VOCAB_SIZE];
 	float tensor_output[1][VOCAB_SIZE];
 
-	memset(tensor_lstm_Y_h, 0, sizeof(tensor_lstm_Y_h));
-	memset(tensor_lstm_Y_c, 0, sizeof(tensor_lstm_Y_c));
 
 	// One end sequence -> generate only end sequences
 	if( seed[SEED_LEN-1] == MIDI_END ) {
@@ -41,11 +39,17 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 		return;
 	}
 
+	// Reset the network, and re-initialize with the seed, discarding the output:
+	// Just need the internal states to be initialized.
+	memset(tensor_lstm_Y_h, 0, sizeof(tensor_lstm_Y_h));
+	memset(tensor_lstm_Y_c, 0, sizeof(tensor_lstm_Y_c));
 	for( int i=0; i<SEED_LEN; i++ )
 	{
 		midi_to_onehot(seed[i], tensor_input[0]);
 		entry(tensor_input, tensor_output);
 	}
+
+	// Generate BATCH_SIZE of new notes
 	for(int i=0; i<BATCH_SIZE-1; i++) {
 		generated[i] = onehot_to_midi(tensor_output, temp);
 		memcpy(tensor_input, tensor_output, sizeof(tensor_input));

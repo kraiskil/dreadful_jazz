@@ -42,7 +42,7 @@ uint8_t onehot_to_midi(float rv[1][VOCAB_SIZE], float temperature)
 		}
 	}
 
-	if( (read_adc_naiive(0) & 0x3)  == 0 ){
+	if( (read_adc_naiive(0) & 0x7)  == 0 ){
 		// its a bit eager in selecting END
 		//if( vocab[maxi2] == MIDI_END )
 		//	return vocab[maxi];

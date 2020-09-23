@@ -150,7 +150,7 @@ void fill_buffer_i( int i, uint8_t *seed )
 		nfreq = 0;
 	}
 	else if ( nnote != MIDI_CONT ) {
-		nfreq = midinote_to_freq(nnote);
+		nfreq = midinote_to_freq(nnote + 1);
 		adsr = ADSR_BEGIN;
 	}
 	else { // This is a midi continue note
