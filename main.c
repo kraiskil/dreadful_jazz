@@ -163,7 +163,7 @@ void fill_buffer_i( int i, uint8_t *seed )
 	audio_fill_buffer(audio[i], nfreq, adsr);
 }
 
-int main(void)
+void init_peripherals(void)
 {
 	/* Set device clocks from opencm3 provided preset.*/
 	const struct rcc_clock_scale *clocks = &rcc_hsi_configs[RCC_CLOCK_3V3_84MHZ];
@@ -290,15 +290,6 @@ int main(void)
 
 	systick_setup();
 
-	for( int i=0; i< AUDIO_NUM_BUFFS; i++)
-		audio_fill_buffer(audio[i], 0, ADSR_BEGIN);
-	
-	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) &audio[0]);
-	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) &audio[1]);
-	audio_read_buff = 0;
-
-
-
 	/* ADC setup as in the libopencm3-examples */
 	rcc_periph_clock_enable(RCC_ADC1);
 	gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO0);
@@ -307,23 +298,38 @@ int main(void)
 	adc_disable_scan_mode(ADC1);
 	adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_3CYC);
 	adc_power_on(ADC1);
+}
 
+int main(void)
+{
 
-	// audio buffers are now full of zeros
+	init_peripherals();
+
+	// Fill audio buffers with silence, and start playing it.
+	// While silence plays, the main while loop can start creating music
+	for( int i=0; i< AUDIO_NUM_BUFFS; i++)
+		audio_fill_buffer(audio[i], 0, ADSR_BEGIN);
+	dma_set_memory_address(DMA1, DMA_STREAM5, (uint32_t) &audio[0]);
+	dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) &audio[1]);
+	audio_read_buff = 0;
 	dma_enable_stream(DMA1, DMA_STREAM5);
+
+
 	while(1) {
 		// calculate the new notes. This will take a long time
-		uint8_t new_notes[BATCH_SIZE] =  {MIDI_END, MIDI_END, MIDI_END, MIDI_END};
+		uint8_t new_notes[BATCH_SIZE];
 		gpio_set(GPIOD, GPIO12);
 		melody_next_sym(seed, 0.8, new_notes);
 		gpio_toggle(GPIOD, GPIO12);
 
-		gpio_set(GPIOD, GPIO13);
 		// wait till we are reading last filled buffer
+		gpio_set(GPIOD, GPIO13);
 		while( audio_last_buffer_playing == false ); 
 		gpio_clear(GPIOD, GPIO13);
 
-		// can now write all but the last buffer, which is being read
+		// can now create audio waveforms from generated buffers, 
+		//  all but the last buffer, which is currently being 
+		// read by the DMA (i.e. played by the I2S)
 		for( int i=0; i<(BATCH_SIZE-1); i++ )
 		{
 			fill_buffer_i(i, seed);
@@ -333,6 +339,8 @@ int main(void)
 		while( audio_last_buffer_playing == true );
 		fill_buffer_i(BATCH_SIZE-1, seed);
 
+		// append new_notes to the seed, popping out played notes
+		// from the seed beginning to make room
 		for( int i=BATCH_SIZE; i<SEED_LEN; i++)
 			seed[i-BATCH_SIZE] = seed[i];
 		for( int i=0; i<BATCH_SIZE; i++ ) {
