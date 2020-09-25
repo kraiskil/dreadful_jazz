@@ -28,6 +28,7 @@ volatile bool audio_last_buffer_playing;
 
 float curr_note_freq=1000;
 uint8_t curr_midi_note=50;
+uint8_t key_offset = 0;
 
 /* Timer to count played note parts: 1/16th notes being the resolution.
  * This is incremented in sync with the DMA sending the buffer to I2S.
@@ -142,9 +143,13 @@ uint16_t random_number()
 }
 
 
+// Fill audio buffer at index i
 void fill_buffer_i( int i, uint8_t *seed )
 {
-	uint8_t nnote = seed[i];
+	// start playing from the end of the seed, so
+	// initializing it with MIDI_END doesn't cause long delays
+	int seed_idx = (SEED_LEN-BATCH_SIZE-2)+i;
+	uint8_t nnote = seed[seed_idx];
 	static float nfreq=0;
 	enum adsr adsr;
 	if( nnote == MIDI_REST) {
@@ -156,11 +161,11 @@ void fill_buffer_i( int i, uint8_t *seed )
 		nfreq = 0;
 	}
 	else if ( nnote != MIDI_CONT ) {
-		nfreq = midinote_to_freq(nnote + 1);
+		nfreq = midinote_to_freq(nnote - key_offset);
 		adsr = ADSR_BEGIN;
 	}
 	else { // This is a midi continue note
-		if( seed[i+1] == MIDI_CONT )
+		if( seed[seed_idx+1] == MIDI_CONT )
 			adsr = ADSR_CONTINUE;
 		else
 			adsr = ADSR_END;
@@ -319,6 +324,7 @@ int main(void)
 	dma_enable_stream(DMA1, DMA_STREAM5);
 
 	init_seed();
+	key_offset = random_number() & 0x7; // Transpose melody into random key
 
 	while(1) {
 		// calculate the new notes. This will take a long time
