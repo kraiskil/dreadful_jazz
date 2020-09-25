@@ -1,15 +1,8 @@
 /*
+ * Based on:
  * Example for how to use I2C and I2S with libopencm3.
  * This is intended for the STM32F411-Discovery demoboard.
- *
- * The device plays a 1kHz sine through the audio jack.
  */
-
-/* Compile time option to use DMA to feed audio to the I2S.
- * Without this, the audio is sent by polling the I2S peripheral's
- * TXE bit */
-#define USE_DMA
-
 
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -134,6 +127,19 @@ static void systick_setup(void)
 	systick_interrupt_enable();
 }
 
+/* verbatim from libopencm3-examples. GPL */
+/* Not random - 12 bit ADC conversion. Lowest few bits
+ * are random enough */
+uint16_t random_number()
+{
+	uint8_t channel_array[16];
+	channel_array[0] = 0;
+	adc_set_regular_sequence(ADC1, 1, channel_array);
+	adc_start_conversion_regular(ADC1);
+	while (!adc_eoc(ADC1));
+	uint16_t reg16 = adc_read_regular(ADC1);
+	return reg16;
+}
 
 
 void fill_buffer_i( int i, uint8_t *seed )
@@ -236,11 +242,9 @@ void init_peripherals(void)
 	 * Fs=8kHz => I2SDIV=23,4 so 23 + ODD bit set
 	 */
 	i2s_set_clockdiv(SPI3, 23, 1);
-#ifdef USE_DMA
 	/* Have the SPI/I2S peripheral ping the DMA each time data is sent.
 	 * The DMA peripheral is configured later. */
 	spi_enable_tx_dma(SPI3);
-#endif
 	i2s_enable(SPI3);
 
 
@@ -314,6 +318,7 @@ int main(void)
 	audio_read_buff = 0;
 	dma_enable_stream(DMA1, DMA_STREAM5);
 
+	init_seed();
 
 	while(1) {
 		// calculate the new notes. This will take a long time

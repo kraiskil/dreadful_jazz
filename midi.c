@@ -3,17 +3,7 @@
 #include <libopencm3/stm32/adc.h>
 #include "midi.h"
 
-/* verbatim from libopencm3-examples. GPL */
-static uint16_t read_adc_naiive(uint8_t channel)
-{
-	uint8_t channel_array[16];
-	channel_array[0] = channel;
-	adc_set_regular_sequence(ADC1, 1, channel_array);
-	adc_start_conversion_regular(ADC1);
-	while (!adc_eoc(ADC1));
-	uint16_t reg16 = adc_read_regular(ADC1);
-	return reg16;
-}
+extern uint16_t random_number();
 
 // Output of NN -> MIDI note.
 // 0 : rest
@@ -42,7 +32,7 @@ uint8_t onehot_to_midi(float rv[1][VOCAB_SIZE], float temperature)
 		}
 	}
 
-	if( (read_adc_naiive(0) & 0x7)  < 3 ){
+	if( (random_number() & 0x7)  < 3 ){
 		// its a bit eager in selecting END
 		//if( vocab[maxi2] == MIDI_END )
 		//	return vocab[maxi];

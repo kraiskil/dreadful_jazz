@@ -25,15 +25,17 @@ MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END,
 MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
 MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
 MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, 
-60, 60, 60, 60, 62, MIDI_CONT, MIDI_CONT, MIDI_CONT
+60, MIDI_CONT, MIDI_CONT, MIDI_CONT, 60, MIDI_CONT, MIDI_CONT, MIDI_CONT 
 };
 #else
 #error
 #endif
+
 void entry(float tensor_input_1[1][1][VOCAB_SIZE], float tensor_dense[1][VOCAB_SIZE]);
 extern float tensor_lstm_Y_h[1][1][HIDDEN_SIZE];
 extern float tensor_lstm_Y_c[1][1][HIDDEN_SIZE];
 
+extern uint16_t random_number();
 
 void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH_SIZE])
 {
@@ -71,3 +73,17 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 	generated[BATCH_SIZE-1] = onehot_to_midi(tensor_output, temp);
 }
 
+void init_seed(void)
+{
+#warning this is highly fragile and breaks when vocabulary or seed lenght changes
+#if SEED_LEN == 40
+	// current vocabulary 4 first entries are nice notes
+	int16_t noteidx = random_number() & 0x3;
+	seed[32] = vocab[noteidx];
+	noteidx = random_number() & 0x3;
+	seed[36] = vocab[noteidx];
+
+#else
+#error not done yet
+#endif
+}

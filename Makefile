@@ -1,7 +1,7 @@
 XCXX=arm-none-eabi-gcc
 XCXXFLAGS=--specs=nosys.specs -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 XCXXFLAGS+=-I${OPENCM3_DIR}/include -DSTM32F4
-CXXFLAGS=-DNDEBUG -Wall -Werror
+CXXFLAGS=-DNDEBUG -Wall
 CXXFLAGS+=-Os
 #CXXFLAGS+=-O1 -g
 CXXFLAGS+=-DHIDDEN_SIZE=164
