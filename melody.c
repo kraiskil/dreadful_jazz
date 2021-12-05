@@ -33,6 +33,8 @@ MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END,
 #endif
 
 void entry(float tensor_input_1[1][1][VOCAB_SIZE], float tensor_dense[1][VOCAB_SIZE]);
+// These are needed only because onnx2c had a bug where the internal status
+// was not reset between sequences
 extern float tensor_lstm_Y_h[1][1][HIDDEN_SIZE];
 extern float tensor_lstm_Y_c[1][1][HIDDEN_SIZE];
 
@@ -56,7 +58,7 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 	}
 
 	// Reset the network, and re-initialize with the seed, discarding the output:
-	// Just need the internal states to be initialized.
+	// Remove these two lines: see comment on line 36 above
 	memset(tensor_lstm_Y_h, 0, sizeof(tensor_lstm_Y_h));
 	memset(tensor_lstm_Y_c, 0, sizeof(tensor_lstm_Y_c));
 	for( int i=0; i<SEED_LEN; i++ )

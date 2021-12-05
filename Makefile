@@ -13,7 +13,9 @@ all: melodygen
 .PHONY: flash clean
 
 generated.c: model.onnx
-	onnx2c -v $< > $@
+	# the driving code relies on onnx2c generating "buggy" code for LSTM.
+	# Don't generate the code now since onnx2c fixed the bug.
+	#onnx2c -v $< > $@
 
 melodygen: main.c audio.c midi.c vocab.c melody.c generated.c
 	${XCXX} ${CXXFLAGS} ${XCXXFLAGS} $^ -o $@ ${XLDFLAGS}
