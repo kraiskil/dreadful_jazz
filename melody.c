@@ -2,6 +2,7 @@
 #include "midi.h"
 #include <string.h>
 #include <stdbool.h>
+#include <libopencm3/stm32/gpio.h>
 
 #if SEED_LEN == 8
 uint8_t seed[SEED_LEN] = {60, 61, 62, 63, 64, 65, 66, MIDI_CONT };
@@ -61,7 +62,9 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 	for( int i=0; i<SEED_LEN; i++ )
 	{
 		midi_to_onehot(seed[i], tensor_input[0]);
+		gpio_set(GPIOD, GPIO12);
 		entry(tensor_input, tensor_output);
+		gpio_clear(GPIOD, GPIO12);
 	}
 
 	// Generate BATCH_SIZE of new notes

@@ -329,9 +329,9 @@ int main(void)
 	while(1) {
 		// calculate the new notes. This will take a long time
 		uint8_t new_notes[BATCH_SIZE];
-		gpio_set(GPIOD, GPIO12);
+		//gpio_set(GPIOD, GPIO12);
 		melody_next_sym(seed, 0.8, new_notes);
-		gpio_toggle(GPIOD, GPIO12);
+		//gpio_toggle(GPIOD, GPIO12);
 
 		// wait till we are reading last filled buffer
 		gpio_set(GPIOD, GPIO13);
