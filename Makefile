@@ -1,10 +1,14 @@
-XCXX=arm-none-eabi-gcc
+XCXX=arm-none-eabi-g++
 XCXXFLAGS=--specs=nosys.specs -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
+XCXXFLAGS+= -ffast-math
 XCXXFLAGS+=-I${OPENCM3_DIR}/include -DSTM32F4
 CXXFLAGS=-DNDEBUG -Wall
-CXXFLAGS+=-Os
-#CXXFLAGS+=-O1 -g
+#CXXFLAGS+=-O2
+CXXFLAGS+=-O1 -g
+#Size of the LSTM's internal matrix. This value must track the value in the model.onnx
 CXXFLAGS+=-DHIDDEN_SIZE=164
+SEQUENCE_LENGTH=16
+CXXFLAGS+=-DSEED_LEN=$(SEQUENCE_LENGTH)
 
 XLDFLAGS=-L${OPENCM3_DIR}/lib -lopencm3_stm32f4 -Tstm32f411.ld -nostartfiles -Wl,--print-memory-usage -lm
 LDFLAGS=-lm
@@ -13,9 +17,8 @@ all: melodygen
 .PHONY: flash clean
 
 generated.c: model.onnx
-	# the driving code relies on onnx2c generating "buggy" code for LSTM.
-	# Don't generate the code now since onnx2c fixed the bug.
-	#onnx2c -v $< > $@
+	# batch size is named N, sequence length M1 in the model.onnx
+	onnx2c -d N:1 -d M1:$(SEQUENCE_LENGTH)  $< > $@
 
 melodygen: main.c audio.c midi.c vocab.c melody.c generated.c
 	${XCXX} ${CXXFLAGS} ${XCXXFLAGS} $^ -o $@ ${XLDFLAGS}
@@ -28,4 +31,4 @@ desktop: desktop.c midi.c generated.c
 	${CXX} ${CXXFLAGS} $^ -o $@ ${LDFLAGS}
 
 clean:
-	rm -f melodygen desktop
+	rm -f melodygen desktop generated.c

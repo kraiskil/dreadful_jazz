@@ -43,12 +43,12 @@ uint8_t onehot_to_midi(float rv[1][VOCAB_SIZE], float temperature)
 		return vocab[maxi];
 }
 
-void midi_to_onehot(uint8_t midi, float rv[1][VOCAB_SIZE])
+void midi_to_onehot(uint8_t midi, float rv[VOCAB_SIZE])
 {
 	for( int i=0; i<VOCAB_SIZE; i++ )
 		if( vocab[i] == midi )
-			rv[0][i]=1;
+			rv[i]=1;
 		else
-			rv[0][i]=0;
+			rv[i]=0;
 }
 

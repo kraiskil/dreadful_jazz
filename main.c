@@ -16,12 +16,21 @@
 #include <math.h>
 
 #include "audio.h"
+#include "leds.h"
 #include "midi.h"
 #include "melody.h"
 
 
 
-#define AUDIO_NUM_BUFFS  BATCH_SIZE
+//#define AUDIO_NUM_BUFFS  BATCH_SIZE
+// Divide the audio buffers into 8 parts.
+// This helps to buffer the audio generation:
+// During the N-1 first buffers playing, the
+// system calculates the neural network, producing
+// new notes.
+// During the last buffer playing, the system starts
+// waveform synthesis for the N-1 first buffers.
+#define AUDIO_NUM_BUFFS 8
 int16_t audio[AUDIO_NUM_BUFFS][AUDIO_DMA_SIZE];
 volatile int audio_read_buff=0;
 volatile bool audio_last_buffer_playing;
@@ -55,7 +64,7 @@ static void write_i2c_to_audiochip( uint8_t reg, uint8_t contents)
  */
 void dma1_stream5_isr(void)
 {
-	gpio_toggle(GPIOD, GPIO15);
+	led_toggle(LED_BLUE);
 
 	/* Clear the 'transfer complete' interrupt, or execution would jump right back to this ISR. */
 	if (dma_get_interrupt_flag(DMA1, DMA_STREAM5, DMA_TCIF)) {
@@ -81,6 +90,9 @@ void dma1_stream5_isr(void)
 	else
 		audio_last_buffer_playing = false;
 
+
+	// Handle ping-pong double buffering. If currently playing buffer is buffer 0,
+	// set up buffer 1 and vice versa
 	if( dma_get_target(DMA1, DMA_STREAM5) == 0 )
 	{
 		dma_set_memory_address_1(DMA1, DMA_STREAM5, (uint32_t) audio[audio_read_buff]);
@@ -143,7 +155,9 @@ uint16_t random_number()
 }
 
 
-// Fill audio buffer at index i
+// Fill audio buffer at index i,
+// This calculates the melody status, so the synthesizer
+// only needs to know if the note is starting, continuing or ending.
 void fill_buffer_i( int i, uint8_t *seed )
 {
 	// start playing from the end of the seed, so
@@ -171,6 +185,7 @@ void fill_buffer_i( int i, uint8_t *seed )
 			adsr = ADSR_END;
 	}
 
+	// generate waveform
 	audio_fill_buffer(audio[i], nfreq, adsr);
 }
 
@@ -189,7 +204,7 @@ void init_peripherals(void)
 	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO12); /* green led */
 	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO13); /* orange led */
 	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO14); /* red led */
-	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO15); /* ? led */
+	gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO15); /* blue led */
 	gpio_set(GPIOD, GPIO15); // ? led - error
 
 
@@ -329,14 +344,14 @@ int main(void)
 	while(1) {
 		// calculate the new notes. This will take a long time
 		uint8_t new_notes[BATCH_SIZE];
-		//gpio_set(GPIOD, GPIO12);
 		melody_next_sym(seed, 0.8, new_notes);
-		//gpio_toggle(GPIOD, GPIO12);
 
-		// wait till we are reading last filled buffer
-		gpio_set(GPIOD, GPIO13);
+		// We buffer a number (AUDIO_NUM_BUFFS) of (sub)buffers of precalculated
+		// audio data to DMA to the audio chip.
+		// Here we wait till we are reading last filled (sub)buffer
+		led_on(LED_ORANGE);
 		while( audio_last_buffer_playing == false ); 
-		gpio_clear(GPIOD, GPIO13);
+		led_off(LED_ORANGE);
 
 		// can now create audio waveforms from generated buffers, 
 		//  all but the last buffer, which is currently being 
@@ -362,5 +377,19 @@ int main(void)
 
 	}
 	return 0;
+}
+
+
+void led_on( enum board_leds led_pin)
+{
+	gpio_set(GPIOD, led_pin);
+}
+void led_off( enum board_leds led_pin )
+{
+	gpio_clear(GPIOD, led_pin);
+}
+void led_toggle( enum board_leds led_pin )
+{
+	gpio_toggle(GPIOD, led_pin);
 }
 

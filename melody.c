@@ -1,3 +1,4 @@
+#include "leds.h"
 #include "melody.h"
 #include "midi.h"
 #include <string.h>
@@ -32,7 +33,7 @@ MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END,
 #error
 #endif
 
-void entry(float tensor_input_1[1][1][VOCAB_SIZE], float tensor_dense[1][VOCAB_SIZE]);
+void entry(float tensor_input_1[1][SEED_LEN][VOCAB_SIZE], float tensor_dense[1][VOCAB_SIZE]);
 // These are needed only because onnx2c had a bug where the internal status
 // was not reset between sequences
 extern float tensor_lstm_Y_h[1][1][HIDDEN_SIZE];
@@ -42,7 +43,7 @@ extern uint16_t random_number();
 
 void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH_SIZE])
 {
-	float tensor_input[1][1][VOCAB_SIZE];
+	float tensor_input[1][SEED_LEN][VOCAB_SIZE];
 	float tensor_output[1][VOCAB_SIZE];
 
 
@@ -59,11 +60,12 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 
 	// Reset the network, and re-initialize with the seed, discarding the output:
 	// Remove these two lines: see comment on line 36 above
-	memset(tensor_lstm_Y_h, 0, sizeof(tensor_lstm_Y_h));
-	memset(tensor_lstm_Y_c, 0, sizeof(tensor_lstm_Y_c));
+	//memset(tensor_lstm_Y_h, 0, sizeof(tensor_lstm_Y_h));
+	//memset(tensor_lstm_Y_c, 0, sizeof(tensor_lstm_Y_c));
+#if 0
 	for( int i=0; i<SEED_LEN; i++ )
 	{
-		midi_to_onehot(seed[i], tensor_input[0]);
+		midi_to_onehot(seed[i], tensor_input[0][i]);
 		gpio_set(GPIOD, GPIO12);
 		entry(tensor_input, tensor_output);
 		gpio_clear(GPIOD, GPIO12);
@@ -76,6 +78,23 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 		entry(tensor_input, tensor_output);
 	}
 	generated[BATCH_SIZE-1] = onehot_to_midi(tensor_output, temp);
+#endif
+	for( int i=0; i<SEED_LEN; i++ )
+		midi_to_onehot(seed[i], tensor_input[0][i]);
+
+	for(int b=0; b<BATCH_SIZE; b++) {
+		led_on(LED_GREEN);
+		entry(tensor_input, tensor_output);
+		led_off(LED_GREEN);
+		generated[b] = onehot_to_midi(tensor_output, temp);
+
+		// push new note to seeds, popping the oldest away
+		for( int i=0; i<SEED_LEN-1; i++ ) {
+			seed[i] = seed[i+1];
+			midi_to_onehot(seed[i], tensor_input[0][i]);
+		}
+		seed[SEED_LEN-1] = generated[b];
+	}
 }
 
 void init_seed(void)
@@ -89,6 +108,6 @@ void init_seed(void)
 	seed[36] = vocab[noteidx];
 
 #else
-#error not done yet
+
 #endif
 }

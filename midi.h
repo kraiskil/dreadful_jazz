@@ -7,5 +7,5 @@
 
 float midinote_to_freq(uint8_t x);
 uint8_t onehot_to_midi(float rv[1][VOCAB_SIZE], float temperature);
-void midi_to_onehot(uint8_t midi, float rv[1][VOCAB_SIZE]);
+void midi_to_onehot(uint8_t midi, float rv[VOCAB_SIZE]);
 
