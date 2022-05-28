@@ -34,34 +34,15 @@ MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END, MIDI_END,
 #endif
 
 void entry(float tensor_input_1[1][SEED_LEN][VOCAB_SIZE], float tensor_dense[1][VOCAB_SIZE]);
-// These are needed only because onnx2c had a bug where the internal status
-// was not reset between sequences
-extern float tensor_lstm_Y_h[1][1][HIDDEN_SIZE];
-extern float tensor_lstm_Y_c[1][1][HIDDEN_SIZE];
 
 extern uint16_t random_number();
 
+static float tensor_input[1][SEED_LEN][VOCAB_SIZE];
+static float tensor_output[1][VOCAB_SIZE];
+
 void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH_SIZE])
 {
-	float tensor_input[1][SEED_LEN][VOCAB_SIZE];
-	float tensor_output[1][VOCAB_SIZE];
 
-
-	// One end sequence -> generate only end sequences
-	bool is_end=false;
-	for( int i=SEED_LEN-BATCH_SIZE; i<SEED_LEN; i++)
-		if(seed[i] == MIDI_END )
-			is_end=true;
-	if( is_end ) {
-		for(int i=0; i<BATCH_SIZE; i++)
-			generated[i] = MIDI_END;
-		return;
-	}
-
-	// Reset the network, and re-initialize with the seed, discarding the output:
-	// Remove these two lines: see comment on line 36 above
-	//memset(tensor_lstm_Y_h, 0, sizeof(tensor_lstm_Y_h));
-	//memset(tensor_lstm_Y_c, 0, sizeof(tensor_lstm_Y_c));
 #if 0
 	for( int i=0; i<SEED_LEN; i++ )
 	{
@@ -82,11 +63,18 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 	for( int i=0; i<SEED_LEN; i++ )
 		midi_to_onehot(seed[i], tensor_input[0][i]);
 
+	bool at_end = seed[SEED_LEN-1] == MIDI_END;
 	for(int b=0; b<BATCH_SIZE; b++) {
-		led_on(LED_GREEN);
-		entry(tensor_input, tensor_output);
-		led_off(LED_GREEN);
-		generated[b] = onehot_to_midi(tensor_output, temp);
+		if( at_end ) {
+			generated[b] = MIDI_END;
+			led_on(LED_RED);
+		}
+		else {
+			led_on(LED_GREEN);
+			entry(tensor_input, tensor_output);
+			led_off(LED_GREEN);
+			generated[b] = onehot_to_midi(tensor_output, temp);
+		}
 
 		// push new note to seeds, popping the oldest away
 		for( int i=0; i<SEED_LEN-1; i++ ) {

@@ -1527,26 +1527,26 @@ static float tensor_lstm_Y_c[1][1][164] =
   }
 };
 union tensor_union_0 {
-float tensor_lstm_X[16][1][20];
+float tensor_lstm_X[8][1][20];
 float tensor_lstm_Identity_0[1][164];
 float tensor_biased_tensor_name[1][20];
 };
 static union tensor_union_0 tu0;
 
 union tensor_union_1 {
-float tensor_lstm_Y[16][1][1][164];
+float tensor_lstm_Y[8][1][1][164];
 float tensor_dense0[1][20];
 };
 static union tensor_union_1 tu1;
 
 
-static inline void node_Transpose( const float tensor_input_1[1][16][20], float tensor_lstm_X[16][1][20] )
+static inline void node_Transpose( const float tensor_input_1[1][8][20], float tensor_lstm_X[8][1][20] )
 {
 	/* Transpose
 	 * perm = 1 0 2 
 	 */
 	for( uint32_t i0=0; i0<1; i0++ ) {
-	for( uint32_t i1=0; i1<16; i1++ ) {
+	for( uint32_t i1=0; i1<8; i1++ ) {
 	for( uint32_t i2=0; i2<20; i2++ ) {
 		tensor_lstm_X[i1][i0][i2] = tensor_input_1[i0][i1][i2];
 	}
@@ -1554,7 +1554,7 @@ static inline void node_Transpose( const float tensor_input_1[1][16][20], float 
 	}
 }
 
-static inline void node_lstm( const float X[16][1][20], const float W[1][656][20], const float R[1][656][164], const float B[1][1312], float Y[16][1][1][164], float Y_h[1][1][164], float Y_c[1][1][164] )
+static inline void node_lstm( const float X[8][1][20], const float W[1][656][20], const float R[1][656][164], const float B[1][1312], float Y[8][1][1][164], float Y_h[1][1][164], float Y_c[1][1][164] )
 {
 	/* LSTM 
 	 * inputs: 
@@ -1584,7 +1584,7 @@ static inline void node_lstm( const float X[16][1][20], const float W[1][656][20
 	int fidx = 2*hs;
 	int cidx = 3*hs;
 	int Rb = 4*hs;
-	int sequence_lenght = 16;
+	int sequence_lenght = 8;
 	/* Forget gate */
 	float ft[bs][hs];
 	/* Input gate */
@@ -1711,7 +1711,7 @@ static inline void node_Softmax( const float tensor_biased_tensor_name[1][20], f
 }
 
 
-void entry(const float tensor_input_1[1][16][20], float tensor_dropout_1[1][20]) {
+void entry(const float tensor_input_1[1][8][20], float tensor_dropout_1[1][20]) {
 	node_Transpose( tensor_input_1, tu0.tensor_lstm_X);
 	node_lstm( tu0.tensor_lstm_X, tensor_lstm_W, tensor_lstm_R, tensor_lstm_B, tu1.tensor_lstm_Y, tensor_lstm_Y_h, tensor_lstm_Y_c);
 	node_Squeeze( tensor_lstm_Y_h, tu0.tensor_lstm_Identity_0);

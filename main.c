@@ -162,7 +162,8 @@ void fill_buffer_i( int i, uint8_t *seed )
 {
 	// start playing from the end of the seed, so
 	// initializing it with MIDI_END doesn't cause long delays
-	int seed_idx = (SEED_LEN-BATCH_SIZE-2)+i;
+	//int seed_idx = (SEED_LEN-BATCH_SIZE-2)+i;
+	int seed_idx = i;
 	uint8_t nnote = seed[seed_idx];
 	static float nfreq=0;
 	enum adsr adsr;
@@ -367,6 +368,7 @@ int main(void)
 
 		// append new_notes to the seed, popping out played notes
 		// from the seed beginning to make room
+#if 0
 		for( int i=BATCH_SIZE; i<SEED_LEN; i++)
 			seed[i-BATCH_SIZE] = seed[i];
 		for( int i=0; i<BATCH_SIZE; i++ ) {
@@ -374,7 +376,7 @@ int main(void)
 			if( new_notes[i] == MIDI_END )
 				gpio_set(GPIOD, GPIO14); // red led
 		}
-
+#endif
 	}
 	return 0;
 }
