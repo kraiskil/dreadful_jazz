@@ -1,3 +1,5 @@
+// MIDI commands as mapped to one-hot
+// encodings in the tensorflow scripts
 #include "vocab.h"
 uint8_t vocab[VOCAB_SIZE] = 
 {

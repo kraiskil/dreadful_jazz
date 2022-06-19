@@ -6,7 +6,8 @@
 #include <libopencm3/stm32/gpio.h>
 
 #if SEED_LEN == 8
-uint8_t seed[SEED_LEN] = {60, 61, 62, 63, 64, 65, 66, MIDI_CONT };
+//uint8_t seed[SEED_LEN] = {60, 61, 62, 63, 64, 65, 66, MIDI_CONT };
+uint8_t seed[SEED_LEN] = {MIDI_REST};
 #elif SEED_LEN == 4
 uint8_t seed[SEED_LEN] = { 69, MIDI_CONT, MIDI_CONT, MIDI_CONT };
 #elif SEED_LEN == 16
@@ -87,15 +88,15 @@ void melody_next_sym(uint8_t seed[SEED_LEN], float temp, uint8_t generated[BATCH
 
 void init_seed(void)
 {
-#warning this is highly fragile and breaks when vocabulary or seed lenght changes
-#if SEED_LEN == 40
 	// current vocabulary 4 first entries are nice notes
 	int16_t noteidx = random_number() & 0x3;
+#warning this is highly fragile and breaks when vocabulary or seed lenght changes
+#if SEED_LEN == 40
 	seed[32] = vocab[noteidx];
 	noteidx = random_number() & 0x3;
 	seed[36] = vocab[noteidx];
 
 #else
-
+	seed[SEED_LEN-1] = vocab[noteidx];
 #endif
 }

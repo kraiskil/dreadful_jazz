@@ -20,7 +20,7 @@ generated.c: model.onnx
 	# batch size is named N, sequence length M1 in the model.onnx
 	onnx2c -d N:1 -d M1:$(SEQUENCE_LENGTH)  $< > $@
 generated.o: generated.c
-	${XCXX} ${CXXFLAGS} ${XCXXFLAGS} -O4 -c $^ -o $@ 
+	${XCXX} ${CXXFLAGS} ${XCXXFLAGS} -Ofast -c $^ -o $@ 
 
 melodygen: main.c audio.c midi.c vocab.c melody.c generated.o
 	${XCXX} ${CXXFLAGS} ${XCXXFLAGS} $^ -o $@ ${XLDFLAGS}

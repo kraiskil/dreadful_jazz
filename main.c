@@ -193,7 +193,8 @@ void fill_buffer_i( int i, uint8_t *seed )
 void init_peripherals(void)
 {
 	/* Set device clocks from opencm3 provided preset.*/
-	const struct rcc_clock_scale *clocks = &rcc_hsi_configs[RCC_CLOCK_3V3_84MHZ];
+	//const struct rcc_clock_scale *clocks = &rcc_hsi_configs[RCC_CLOCK_3V3_84MHZ];
+	const struct rcc_clock_scale *clocks = &rcc_hsi_configs[RCC_CLOCK_3V3_96MHZ];
 	rcc_clock_setup_pll( clocks );
 
 	rcc_periph_clock_enable(RCC_GPIOA);
